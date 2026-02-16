@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KB Club — Payment Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black:   #0d0d0d;
+    --ink:     #1a1a2e;
+    --steel:   #16213e;
+    --mid:     #0f3460;
+    --red:     #e94560;
+    --gold:    #f5a623;
+    --green:   #2ecc71;
+    --dim:     #8892a4;
+    --card:    #111827;
+    --border:  rgba(255,255,255,0.07);
+    --radius:  12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--black);
+    color: #e8eaf0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background texture */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 0%, rgba(233,69,96,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 100%, rgba(15,52,96,0.4) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative; z-index: 10;
+    padding: 28px 40px 20px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 14px;
+  }
+
+  .logo-icon {
+    width: 48px; height: 48px;
+    background: var(--red);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 20px rgba(233,69,96,0.4);
+  }
+
+  .logo-text h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; letter-spacing: 2px;
+    line-height: 1;
+    color: #fff;
+  }
+
+  .logo-text span {
+    font-size: 12px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase;
+  }
+
+  .month-selector {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .month-selector label {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim);
+  }
+
+  .month-selector select {
+    background: var(--card); border: 1px solid var(--border);
+    color: #fff; padding: 8px 14px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer;
+    appearance: none; outline: none;
+  }
+
+  .month-selector select:focus { border-color: var(--red); }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    position: relative; z-index: 10;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat {
+    background: var(--black);
+    padding: 18px 28px;
+    position: relative; overflow: hidden;
+  }
+
+  .stat::after {
+    content: '';
+    position: absolute; bottom: 0; left: 28px; right: 28px; height: 2px;
+    border-radius: 2px; opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .stat.red::after  { background: var(--red);   }
+  .stat.gold::after { background: var(--gold);  }
+  .stat.green::after{ background: var(--green); }
+  .stat.blue::after { background: #4a9eff;      }
+  .stat:hover::after { opacity: 1; }
+
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px; letter-spacing: 1px; line-height: 1;
+    color: #fff;
+  }
+
+  .stat-value .currency { font-size: 22px; opacity: 0.7; }
+
+  .stat-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--dim); margin-top: 4px;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap {
+    position: relative; z-index: 10;
+    padding: 12px 40px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .progress-label { font-size: 12px; color: var(--dim); white-space: nowrap; }
+
+  .progress-track {
+    flex: 1; height: 6px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 99px; overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--red), var(--gold));
+    transition: width 0.6s cubic-bezier(.4,0,.2,1);
+    width: 0%;
+  }
+
+  .progress-pct {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; color: var(--gold); min-width: 48px; text-align: right;
+  }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    position: relative; z-index: 10;
+    padding: 14px 40px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    transition: all 0.2s; text-decoration: none;
+  }
+
+  .btn-ghost {
+    background: transparent; color: var(--dim);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+  .btn-red {
+    background: var(--red); color: #fff;
+    box-shadow: 0 4px 14px rgba(233,69,96,0.35);
+  }
+  .btn-red:hover { background: #f55575; transform: translateY(-1px); }
+
+  .btn-green {
+    background: rgba(46,204,113,0.15); color: var(--green);
+    border: 1px solid rgba(46,204,113,0.3);
+  }
+  .btn-green:hover { background: rgba(46,204,113,0.25); }
+
+  .search-wrap {
+    margin-left: auto;
+    position: relative;
+  }
+
+  .search-wrap input {
+    background: var(--card); border: 1px solid var(--border);
+    color: #fff; padding: 8px 14px 8px 36px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; width: 200px;
+    transition: border-color 0.2s, width 0.3s;
+  }
+  .search-wrap input:focus { border-color: var(--red); width: 240px; }
+  .search-wrap input::placeholder { color: var(--dim); }
+
+  .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--dim); font-size: 14px; pointer-events: none;
+  }
+
+  /* ── MEMBER LIST ── */
+  .list-wrap {
+    position: relative; z-index: 10;
+    padding: 24px 40px 40px;
+  }
+
+  .section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--dim);
+    margin-bottom: 12px; padding-left: 4px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px;
+  }
+
+  .member-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative; overflow: hidden;
+    user-select: none;
+  }
+
+  .member-card::before {
+    content: ''; position: absolute;
+    left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+
+  .member-card:hover {
+    border-color: rgba(255,255,255,0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  .member-card.paid {
+    border-color: rgba(46,204,113,0.25);
+    background: rgba(46,204,113,0.05);
+  }
+  .member-card.paid::before { background: var(--green); }
+
+  .member-card.unpaid {
+    border-color: rgba(233,69,96,0.2);
+  }
+  .member-card.unpaid::before { background: var(--red); }
+
+  /* Checkbox */
+  .check-circle {
+    width: 28px; height: 28px; min-width: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    font-size: 13px;
+  }
+  .member-card.paid .check-circle {
+    background: var(--green); border-color: var(--green); color: #fff;
+  }
+  .member-card.unpaid .check-circle {
+    border-color: var(--red);
+  }
+
+  /* Avatar */
+  .avatar {
+    width: 40px; height: 40px; min-width: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 15px;
+    letter-spacing: -0.5px;
+  }
+
+  .member-info { flex: 1; min-width: 0; }
+
+  .member-name {
+    font-weight: 500; font-size: 14px; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .member-meta {
+    font-size: 12px; color: var(--dim); margin-top: 2px;
+  }
+
+  .member-badge {
+    display: inline-block;
+    padding: 2px 7px; border-radius: 4px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    margin-right: 5px;
+  }
+  .badge-junior { background: rgba(74,158,255,0.15); color: #4a9eff; }
+  .badge-senior { background: rgba(245,166,35,0.15); color: var(--gold); }
+
+  .member-fee {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; color: var(--dim); letter-spacing: 1px;
+    transition: color 0.2s;
+  }
+  .member-card.paid .member-fee { color: var(--green); }
+
+  /* ── ADD MEMBER PANEL ── */
+  .add-panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    margin-bottom: 20px; display: none;
+  }
+  .add-panel.open { display: block; }
+
+  .add-panel h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 1px; margin-bottom: 14px; color: var(--red);
+  }
+
+  .add-form {
+    display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end;
+  }
+
+  .form-group label {
+    display: block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--dim); margin-bottom: 5px;
+  }
+
+  .form-group input {
+    width: 100%; background: var(--black); border: 1px solid var(--border);
+    color: #fff; padding: 9px 12px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--red); }
+
+  /* ── EXPORT PANEL ── */
+  .export-panel {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+  }
+  .export-panel.open { display: flex; }
+
+  .export-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px; width: 540px; max-width: 90vw;
+    position: relative;
+  }
+
+  .export-box h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px; letter-spacing: 2px; margin-bottom: 6px;
+  }
+
+  .export-box .subtitle {
+    font-size: 13px; color: var(--dim); margin-bottom: 20px;
+  }
+
+  .export-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px; margin-bottom: 20px;
+  }
+  .export-table th {
+    text-align: left; padding: 8px 10px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--dim); border-bottom: 1px solid var(--border);
+  }
+  .export-table td {
+    padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .export-table tr:last-child td { border-bottom: none; }
+
+  .paid-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+  }
+  .paid-pill.yes { background: rgba(46,204,113,0.15); color: var(--green); }
+  .paid-pill.no  { background: rgba(233,69,96,0.15);  color: var(--red);   }
+
+  .export-summary {
+    background: rgba(255,255,255,0.04); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px;
+    display: flex; gap: 24px;
+  }
+
+  .export-summary div { font-size: 13px; }
+  .export-summary strong { font-weight: 600; }
+
+  .export-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .close-btn {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; color: var(--dim);
+    font-size: 20px; cursor: pointer; transition: color 0.2s; line-height: 1;
+  }
+  .close-btn:hover { color: #fff; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 30px; right: 30px; z-index: 999;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.4s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast-icon { font-size: 18px; }
+
+  /* ── NEW MONTH MODAL ── */
+  .month-modal {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center;
+  }
+  .month-modal.open { display: flex; }
+
+  .month-modal-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px; text-align: center; max-width: 400px; width: 90%;
+  }
+  .month-modal-box h2 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 2px; margin-bottom: 8px;
+  }
+  .month-modal-box p { font-size: 14px; color: var(--dim); margin-bottom: 24px; line-height: 1.6; }
+  .month-modal-box .btns { display: flex; gap: 10px; justify-content: center; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 48px; color: var(--dim); }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 14px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 700px) {
+    header { padding: 18px 20px; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .stats-bar { grid-template-columns: 1fr 1fr; }
+    .toolbar { padding: 12px 20px; flex-wrap: wrap; }
+    .list-wrap { padding: 16px 20px 32px; }
+    .progress-wrap { padding: 12px 20px; }
+    .add-form { grid-template-columns: 1fr 1fr; }
+    .member-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🥊</div>
+    <div class="logo-text">
+      <h1>KB CLUB</h1>
+      <span>Payment Tracker</span>
+    </div>
+  </div>
+  <div class="month-selector">
+    <label>Tracking Month</label>
+    <select id="monthSelect" onchange="changeMonth()"></select>
+  </div>
+</header>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat green">
+    <div class="stat-value"><span id="statPaid">0</span><span class="currency" style="font-size:16px"> MKD</span></div>
+    <div class="stat-label">Collected</div>
+  </div>
+  <div class="stat red">
+    <div class="stat-value"><span id="statOwed">0</span><span class="currency" style="font-size:16px"> MKD</span></div>
+    <div class="stat-label">Outstanding</div>
+  </div>
+  <div class="stat gold">
+    <div class="stat-value"><span id="statTotal">0</span><span class="currency" style="font-size:16px"> MKD</span></div>
+    <div class="stat-label">Expected Total</div>
+  </div>
+  <div class="stat blue">
+    <div class="stat-value"><span id="statCount">0</span><span class="currency" style="font-size:18px"> / <span id="statCountTotal">0</span></span></div>
+    <div class="stat-label">Paid Members</div>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-wrap">
+  <span class="progress-label">Collection Progress</span>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  <span class="progress-pct" id="progressPct">0%</span>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <button class="btn btn-ghost" onclick="markAll(true)">✓ Mark All Paid</button>
+  <button class="btn btn-ghost" onclick="markAll(false)">✗ Clear All</button>
+  <button class="btn btn-ghost" id="addToggleBtn" onclick="toggleAdd()">+ Add Member</button>
+  <button class="btn btn-red" onclick="openExport()">↗ Export Summary</button>
+  <button class="btn btn-ghost" style="color:#e94560;border-color:rgba(233,69,96,0.3)" onclick="openNewMonth()">↺ New Month</button>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="searchInput" placeholder="Search members…" oninput="renderList()">
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="list-wrap">
+
+  <!-- ADD MEMBER PANEL -->
+  <div class="add-panel" id="addPanel">
+    <h3>+ New Member</h3>
+    <div class="add-form">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="newName" placeholder="e.g. Jake Thompson">
+      </div>
+      <div class="form-group">
+        <label>Date of Birth</label>
+        <input type="date" id="newDob">
+      </div>
+      <div class="form-group">
+        <label>Monthly Fee (MKD)</label>
+        <input type="number" id="newFee" placeholder="1000 or 1500" min="1">
+      </div>
+      <button class="btn btn-red" onclick="addMember()" style="height:38px">Add</button>
+    </div>
+  </div>
+
+  <!-- UNPAID -->
+  <div id="unpaidSection">
+    <div class="section-title"><span id="unpaidLabel">Unpaid</span></div>
+    <div class="member-grid" id="unpaidGrid"></div>
+  </div>
+
+  <!-- PAID -->
+  <div id="paidSection" style="margin-top:28px">
+    <div class="section-title"><span id="paidLabel">Paid</span></div>
+    <div class="member-grid" id="paidGrid"></div>
+  </div>
+
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="export-panel" id="exportPanel" onclick="closeExport(event)">
+  <div class="export-box">
+    <button class="close-btn" onclick="closeExportBtn()">✕</button>
+    <h2>📋 Export Summary</h2>
+    <div class="subtitle" id="exportSubtitle"></div>
+    <div class="export-summary" id="exportSummary"></div>
+    <div style="max-height:320px;overflow-y:auto">
+      <table class="export-table" id="exportTable">
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Category</th><th>Fee</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="exportBody"></tbody>
+      </table>
+    </div>
+    <div class="export-actions">
+      <button class="btn btn-ghost" onclick="copyExport()">📋 Copy to Clipboard</button>
+      <button class="btn btn-green" onclick="closeExportBtn()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW MONTH MODAL -->
+<div class="month-modal" id="monthModal">
+  <div class="month-modal-box">
+    <h2>🔄 New Month</h2>
+    <p>This will reset all payment statuses for the new month while keeping your member list intact.<br><br>Are you sure?</p>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="closeNewMonth()">Cancel</button>
+      <button class="btn btn-red" onclick="confirmNewMonth()">Reset Payments</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon"></span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'kb_tracker_v1';
+
+const AVATAR_COLORS = [
+  ['#e94560','#fff'],['#f5a623','#000'],['#2ecc71','#000'],
+  ['#4a9eff','#fff'],['#a855f7','#fff'],['#f97316','#fff'],
+  ['#06b6d4','#000'],['#ec4899','#fff'],['#84cc16','#000'],
+];
+
+function getAvatarColor(name) {
+  let h = 0;
+  for (let c of name) h = ((h << 5) - h) + c.charCodeAt(0);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function initials(name) {
+  return name.trim().split(' ').map(p => p[0]).join('').toUpperCase().slice(0,2);
+}
+
+function calcAge(dob) {
+  if (!dob) return null;
+  const d = new Date(dob), now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age;
+}
+
+function getCategory(dob) {
+  const age = calcAge(dob);
+  if (age === null) return 'Senior';
+  return age <= 16 ? 'Junior' : 'Senior';
+}
+
+// Default members
+const DEFAULT_MEMBERS = [
+  {id:1,  name:"Musli Kamberi",       dob:"2009-03-15", fee:1000},
+  {id:2,  name:"Amar Kadrija",        dob:"2007-11-22", fee:1500},
+  {id:3,  name:"Selavdin Selmani",    dob:"2010-06-08", fee:1000},
+  {id:4,  name:"Andi Latifi",         dob:"2005-09-30", fee:1500},
+  {id:5,  name:"Arianit Shabani",     dob:"2008-01-14", fee:1500},
+  {id:6,  name:"Endrit Ajrulai",      dob:"1998-07-25", fee:1500},
+  {id:7,  name:"Sufjan Memedalia",    dob:"2001-04-03", fee:1500},
+  {id:8,  name:"Bleart Ajdari",       dob:"2003-12-19", fee:1500},
+  {id:9,  name:"Fitim Osmani",        dob:"2011-05-27", fee:1000},
+  {id:10, name:"Ismail Sulejmani",    dob:"1995-08-11", fee:1500},
+  {id:11, name:"Leutrim Fetai",       dob:"2006-02-16", fee:1500},
+  {id:12, name:"Adem Ademi",          dob:"1990-10-05", fee:1500},
+  {id:13, name:"Omer Kadriu",         dob:"2004-07-21", fee:1500},
+  {id:14, name:"Enis Ebibi",          dob:"2012-03-09", fee:1000},
+  {id:15, name:"Behar Bislimi",       dob:"2002-09-14", fee:1500},
+  {id:16, name:"Valon Limani",        dob:"",           fee:1500},
+  {id:17, name:"Liljon Alili",        dob:"",           fee:1500},
+  {id:18, name:"Elion Aliji",         dob:"",           fee:1500},
+  {id:19, name:"Xhemal Alili",        dob:"",           fee:1500},
+  {id:20, name:"Ylldrit Kadriu",      dob:"",           fee:1500},
+  {id:21, name:"Agon Ebibi",          dob:"",           fee:1500},
+  {id:22, name:"Genc Sakipi",         dob:"",           fee:1500},
+  {id:23, name:"Krenar Sakipi",       dob:"",           fee:1500},
+  {id:24, name:"Ensar Memishi",       dob:"",           fee:1500},
+  {id:25, name:"Muhamed Memishi",     dob:"",           fee:1500},
+  {id:26, name:"Arigon Ramadani",     dob:"",           fee:1500},
+  {id:27, name:"Mustafa Memedi",      dob:"",           fee:1500},
+  {id:28, name:"Adnan Ibrahimi",      dob:"",           fee:1500},
+  {id:29, name:"Ditjon Kamberi",      dob:"",           fee:1500},
+  {id:30, name:"Ardi Demiri",         dob:"",           fee:1500},
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+
+let state = { members: [], payments: {}, currentMonth: '' };
+
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      state = JSON.parse(raw);
+    } else {
+      state.members = DEFAULT_MEMBERS.map(m => ({...m}));
+      state.payments = {};
+      state.currentMonth = currentMonthKey();
+      save();
+    }
+  } catch(e) {
+    state.members = DEFAULT_MEMBERS.map(m => ({...m}));
+    state.payments = {};
+    state.currentMonth = currentMonthKey();
+  }
+  if (!state.currentMonth) state.currentMonth = currentMonthKey();
+}
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function isPaid(memberId) {
+  const mp = state.payments[state.currentMonth] || {};
+  return mp[memberId] === true;
+}
+
+function togglePaid(memberId) {
+  if (!state.payments[state.currentMonth]) state.payments[state.currentMonth] = {};
+  const cur = state.payments[state.currentMonth][memberId];
+  state.payments[state.currentMonth][memberId] = !cur;
+  save();
+  updateStats();
+  renderList();
+}
+
+function markAll(paid) {
+  if (!state.payments[state.currentMonth]) state.payments[state.currentMonth] = {};
+  state.members.forEach(m => {
+    state.payments[state.currentMonth][m.id] = paid;
+  });
+  save(); updateStats(); renderList();
+  showToast(paid ? '✅' : '✗', paid ? 'All members marked as paid' : 'All payments cleared');
+}
+
+// ── MONTH SELECTOR ───────────────────────────────────────────────────────────
+
+const MONTHS_FULL = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+
+function populateMonthSelect() {
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = '';
+  const now = new Date();
+  // Show 6 months back and 3 months forward
+  for (let i = -5; i <= 2; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = `${MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}`;
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = label;
+    if (key === state.currentMonth) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function changeMonth() {
+  state.currentMonth = document.getElementById('monthSelect').value;
+  save(); updateStats(); renderList();
+}
+
+function getMonthLabel(key) {
+  if (!key) return '';
+  const [y, m] = key.split('-');
+  return `${MONTHS_FULL[parseInt(m)-1]} ${y}`;
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+
+function renderList() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = state.members.filter(m => m.name.toLowerCase().includes(query));
+
+  const paid   = filtered.filter(m => isPaid(m.id));
+  const unpaid = filtered.filter(m => !isPaid(m.id));
+
+  document.getElementById('unpaidLabel').textContent = `Unpaid (${unpaid.length})`;
+  document.getElementById('paidLabel').textContent   = `Paid (${paid.length})`;
+
+  renderGrid('unpaidGrid', unpaid, false);
+  renderGrid('paidGrid',   paid,   true);
+}
+
+function renderGrid(gridId, members, paidState) {
+  const grid = document.getElementById(gridId);
+  if (members.length === 0) {
+    grid.innerHTML = paidState
+      ? `<div class="empty"><div class="icon">💤</div><p>No paid members yet</p></div>`
+      : `<div class="empty"><div class="icon">🎉</div><p>Everyone has paid!</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = members.map(m => {
+    const [bg, fg] = getAvatarColor(m.name);
+    const cat = getCategory(m.dob);
+    const age = calcAge(m.dob);
+    const ageStr = age !== null ? `${age} yrs` : '';
+    const cls = paidState ? 'paid' : 'unpaid';
+    const checkContent = paidState ? '✓' : '';
+    return `
+      <div class="member-card ${cls}" onclick="togglePaid(${m.id})">
+        <div class="check-circle">${checkContent}</div>
+        <div class="avatar" style="background:${bg};color:${fg}">${initials(m.name)}</div>
+        <div class="member-info">
+          <div class="member-name">${m.name}</div>
+          <div class="member-meta">
+            <span class="member-badge ${cat === 'Junior' ? 'badge-junior' : 'badge-senior'}">${cat}</span>
+            ${ageStr}
+          </div>
+        </div>
+        <div class="member-fee">${m.fee} MKD</div>
+      </div>`;
+  }).join('');
+}
+
+// ── STATS ────────────────────────────────────────────────────────────────────
+
+function updateStats() {
+  const total     = state.members.reduce((s,m) => s + m.fee, 0);
+  const collected = state.members.filter(m => isPaid(m.id)).reduce((s,m) => s + m.fee, 0);
+  const owed      = total - collected;
+  const paidCount = state.members.filter(m => isPaid(m.id)).length;
+  const pct       = total > 0 ? Math.round((collected / total) * 100) : 0;
+
+  document.getElementById('statPaid').textContent  = collected;
+  document.getElementById('statOwed').textContent  = owed;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statCount').textContent = paidCount;
+  document.getElementById('statCountTotal').textContent = state.members.length;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent  = pct + '%';
+}
+
+// ── ADD MEMBER ───────────────────────────────────────────────────────────────
+
+function toggleAdd() {
+  const p = document.getElementById('addPanel');
+  p.classList.toggle('open');
+  document.getElementById('addToggleBtn').textContent =
+    p.classList.contains('open') ? '✕ Cancel' : '+ Add Member';
+}
+
+function addMember() {
+  const name = document.getElementById('newName').value.trim();
+  const dob  = document.getElementById('newDob').value;
+  const fee  = parseInt(document.getElementById('newFee').value) || (getCategory(dob) === 'Junior' ? 1000 : 1500);
+
+  if (!name) { showToast('⚠️', 'Please enter a name'); return; }
+
+  const id = Date.now();
+  state.members.push({ id, name, dob, fee });
+  save(); updateStats(); renderList();
+
+  document.getElementById('newName').value = '';
+  document.getElementById('newDob').value  = '';
+  document.getElementById('newFee').value  = '';
+
+  showToast('✅', `${name} added`);
+}
+
+// ── EXPORT ───────────────────────────────────────────────────────────────────
+
+function openExport() {
+  const label = getMonthLabel(state.currentMonth);
+  document.getElementById('exportSubtitle').textContent = `Payment summary for ${label}`;
+
+  const totalExp  = state.members.reduce((s,m) => s + m.fee, 0);
+  const totalRec  = state.members.filter(m => isPaid(m.id)).reduce((s,m) => s + m.fee, 0);
+  const paidCount = state.members.filter(m => isPaid(m.id)).length;
+  const pct       = totalExp > 0 ? Math.round((totalRec/totalExp)*100) : 0;
+
+  document.getElementById('exportSummary').innerHTML = `
+    <div><span style="color:var(--dim)">Collected</span><br><strong style="color:var(--green)">${totalRec.toLocaleString()} MKD</strong></div>
+    <div><span style="color:var(--dim)">Outstanding</span><br><strong style="color:var(--red)">${(totalExp - totalRec).toLocaleString()} MKD</strong></div>
+    <div><span style="color:var(--dim)">Expected</span><br><strong>${totalExp.toLocaleString()} MKD</strong></div>
+    <div><span style="color:var(--dim)">% Paid</span><br><strong style="color:var(--gold)">${pct}%</strong></div>
+    <div><span style="color:var(--dim)">Members</span><br><strong>${paidCount} / ${state.members.length}</strong></div>
+  `;
+
+  const tbody = document.getElementById('exportBody');
+  tbody.innerHTML = state.members.map((m, i) => {
+    const paid = isPaid(m.id);
+    const cat  = getCategory(m.dob);
+    return `<tr>
+      <td style="color:var(--dim)">${i+1}</td>
+      <td>${m.name}</td>
+      <td><span class="member-badge ${cat==='Junior'?'badge-junior':'badge-senior'}">${cat}</span></td>
+      <td>${m.fee.toLocaleString()} MKD</td>
+      <td><span class="paid-pill ${paid?'yes':'no'}">${paid?'Paid':'Unpaid'}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('exportPanel').classList.add('open');
+}
+
+function closeExport(e) {
+  if (e.target === document.getElementById('exportPanel'))
+    document.getElementById('exportPanel').classList.remove('open');
+}
+function closeExportBtn() {
+  document.getElementById('exportPanel').classList.remove('open');
+}
+
+function copyExport() {
+  const label = getMonthLabel(state.currentMonth);
+  const lines = [`Payment Summary — ${label}`, ''];
+  state.members.forEach((m, i) => {
+    const paid = isPaid(m.id);
+    const cat  = getCategory(m.dob);
+    lines.push(`${i+1}. ${m.name} | ${cat} | ${m.fee.toLocaleString()} MKD | ${paid ? 'Yes' : 'No'}`);
+  });
+  const totalRec = state.members.filter(m => isPaid(m.id)).reduce((s,m) => s + m.fee, 0);
+  const totalExp = state.members.reduce((s,m) => s + m.fee, 0);
+  lines.push('');
+  lines.push(`Total Collected: ${totalRec.toLocaleString()} MKD / ${totalExp.toLocaleString()} MKD`);
+
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(() => showToast('📋', 'Copied to clipboard!'))
+    .catch(() => showToast('⚠️', 'Could not copy'));
+}
+
+// ── NEW MONTH ─────────────────────────────────────────────────────────────────
+
+function openNewMonth() {
+  document.getElementById('monthModal').classList.add('open');
+}
+function closeNewMonth() {
+  document.getElementById('monthModal').classList.remove('open');
+}
+function confirmNewMonth() {
+  // Advance to next month
+  const [y, m] = state.currentMonth.split('-').map(Number);
+  const next = new Date(y, m, 1); // m is already 1-based, so new Date(y, m, 1) = next month
+  const nextKey = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`;
+  state.currentMonth = nextKey;
+  if (!state.payments[nextKey]) state.payments[nextKey] = {};
+  save();
+  populateMonthSelect();
+  updateStats();
+  renderList();
+  closeNewMonth();
+  showToast('🔄', `Moved to ${getMonthLabel(nextKey)}`);
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function showToast(icon, msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastMsg').textContent  = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+load();
+populateMonthSelect();
+updateStats();
+renderList();
+</script>
+</body>
+</html>
